@@ -11,7 +11,12 @@ export class VectorStore {
   private collection: Collection | null = null;
 
   constructor(config: Config) {
-    this.client = new ChromaClient({ host: config.chromaUrl });
+    const url = new URL(config.chromaUrl);
+    this.client = new ChromaClient({
+      host: url.hostname,
+      port: parseInt(url.port, 10) || (url.protocol === "https:" ? 443 : 80),
+      ssl: url.protocol === "https:",
+    });
     this.embedder = new OllamaEmbeddingFunction(config);
     this.collectionName = config.chromaCollection;
   }

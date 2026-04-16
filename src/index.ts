@@ -9,12 +9,15 @@ async function main(): Promise<void> {
   const config = loadConfig();
   setLogLevel(config.logLevel);
 
-  logger.info("Starting Notion Indexation MCP Server...");
+  const schedulerOnly = process.env.SCHEDULER_ONLY === "1";
+  const disableScheduler = process.env.DISABLE_SYNC_SCHEDULER === "1";
 
-  // Initialize vector store
+  logger.info(
+    `Starting Notion Indexation${schedulerOnly ? " (scheduler-only daemon)" : " MCP Server"}...`,
+  );
+
   const store = new VectorStore(config);
 
-  // Health checks
   const chromaOk = await store.healthCheck();
   if (!chromaOk) {
     logger.error("ChromaDB is not reachable. Please ensure it is running.");
@@ -32,17 +35,20 @@ async function main(): Promise<void> {
   await store.init();
   logger.info("Vector store initialized");
 
-  // Set up sync engine and scheduler
   const engine = new SyncEngine(config, store);
   const scheduler = new SyncScheduler(engine, config.syncIntervalMinutes);
 
-  // Start MCP server (must happen before scheduler so stdio is connected)
-  await startMcpServer(config, store, engine);
+  if (!schedulerOnly) {
+    // Start MCP server (must happen before scheduler so stdio is connected)
+    await startMcpServer(config, store, engine);
+  }
 
-  // Start background sync
-  scheduler.start();
+  if (!disableScheduler) {
+    scheduler.start();
+  } else {
+    logger.info("Sync scheduler disabled via DISABLE_SYNC_SCHEDULER=1");
+  }
 
-  // Graceful shutdown
   const shutdown = (): void => {
     logger.info("Shutting down...");
     scheduler.stop();

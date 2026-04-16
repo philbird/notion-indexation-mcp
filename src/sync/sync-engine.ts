@@ -5,6 +5,7 @@ import { SyncStateManager, type SyncState } from "./state.js";
 import type { NotionPage } from "../notion/types.js";
 import type { Config } from "../config.js";
 import { logger } from "../utils/logger.js";
+import { logActivity } from "../utils/activity-log.js";
 
 export class SyncEngine {
   private crawler: NotionCrawler;
@@ -129,13 +130,28 @@ export class SyncEngine {
       await this.stateManager.save(newState);
       this._lastState = newState;
 
-      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      const durationMs = Date.now() - startTime;
+      const duration = (durationMs / 1000).toFixed(1);
       logger.info(
         `Sync complete: ${pagesProcessed} pages, ${chunksStored} chunks in ${duration}s`,
       );
+
+      logActivity(this.config, "sync_complete", {
+        mode: isIncremental ? "incremental" : "full",
+        pages_processed: pagesProcessed,
+        chunks_stored: chunksStored,
+        duration_s: parseFloat(duration),
+        known_pages: newState.knownPageIds.length,
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error(`Sync failed: ${message}`);
+
+      logActivity(this.config, "sync_failed", {
+        error: message,
+        duration_s: parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
+      });
+
       throw err;
     } finally {
       this._isSyncing = false;

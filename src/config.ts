@@ -9,6 +9,7 @@ export interface Config {
   logLevel: "debug" | "info" | "warn" | "error";
   chunkMaxTokens: number;
   embeddingDimensions: number;
+  activityLogDir: string | null;
 }
 
 export function loadConfig(): Config {
@@ -28,5 +29,6 @@ export function loadConfig(): Config {
     logLevel: (process.env.LOG_LEVEL as Config["logLevel"]) ?? "info",
     chunkMaxTokens: parseInt(process.env.CHUNK_MAX_TOKENS ?? "512", 10),
     embeddingDimensions: parseInt(process.env.EMBEDDING_DIMENSIONS ?? "768", 10),
+    activityLogDir: process.env.ACTIVITY_LOG_DIR ?? null,
   };
 }

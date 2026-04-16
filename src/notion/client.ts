@@ -126,11 +126,19 @@ export function extractParent(page: PageObjectResponse): {
   type: "database_id" | "page_id" | "workspace";
   id: string | null;
 } {
-  const parent = page.parent;
-  if (parent.type === "database_id") {
+  const parent = page.parent as {
+    type: string;
+    database_id?: string;
+    data_source_id?: string;
+    page_id?: string;
+  };
+  if (parent.type === "database_id" && parent.database_id) {
     return { type: "database_id", id: parent.database_id };
   }
-  if (parent.type === "page_id") {
+  if (parent.type === "data_source_id" && parent.database_id) {
+    return { type: "database_id", id: parent.database_id };
+  }
+  if (parent.type === "page_id" && parent.page_id) {
     return { type: "page_id", id: parent.page_id };
   }
   return { type: "workspace", id: null };
